@@ -312,7 +312,7 @@ static void wifiConfig() {
 	setup_webserver();
 
   unsigned long wifi_config_start_time = millis();
-	while ((millis() - wifi_config_start_time) < 500 + 500) {
+	while ((millis() - wifi_config_start_time) < WIFI_CONFIG_TIMEOUT + 500) {
 		dnsServer.processNextRequest();
 		server.handleClient();
 		yield();
@@ -419,5 +419,6 @@ void setup() {
 
 void loop() {
   ws2812fx.service();
-  
+  server.handleClient();
+  yield(); 
 }
