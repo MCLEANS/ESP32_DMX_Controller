@@ -41,8 +41,9 @@ const char WEB_PAGE_HEADER_BODY[] PROGMEM = "<h3 style='margin:0'>" WEB_BOARD_NA
 <small>ID: {id}<br/>MAC: {mac}<br/>" WEB_FIRMWARE ": " WEB_FIRMWARE_VERSION "<br/>(" __DATE__ " " __TIME__ ")<br/>\
 <a href='link to issues page' target='_blank' rel='noreferrer'>Report an issue</a>\
 </small></div>\
-<div class='content'><h4>" WEB_HOME " {n} {t}\
-</h4><label for='colorpicker'>Color Picker:</label><input type='color' id='colorpicker' value='#0000ff'>\
+<div class='content'><h4>" WEB_HOME " {n} {t}";
+
+const char WEB_PAGE_COLOR_PICKER[] PROGMEM = "</h4><label for='colorpicker'>Color Picker:</label><input type='color' id='colorpicker' value='{led_color}'><hr>\
 <script>\  
 function changeColor(){\
     document.getElementById('colorpicker').addEventListener('change', (e) => {\

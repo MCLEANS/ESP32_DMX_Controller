@@ -168,7 +168,20 @@ static void start_html_page(String& page_content, const String& title) {
 	}
 	s.replace("{id}", esp_chipid);
 	s.replace("{mac}", WiFi.macAddress());
+
 	page_content += s;
+}
+
+static void set_color_picker(String& page_content){
+  RESERVE_STRING(s, LARGE_STR);
+  s = FPSTR(WEB_PAGE_COLOR_PICKER);
+
+  String hex_color = "#";
+  hex_color.concat(String(ws2812_config.color,HEX));
+  s.replace("{led_color}",hex_color);
+
+  page_content += s;
+
 }
 
 static void end_html_page(String& page_content) {
@@ -189,7 +202,14 @@ static void sendHttpRedirect() {
  *****************************************************************/
 static void webserver_root() {
   RESERVE_STRING(page_content, XLARGE_STR);
-  start_html_page(page_content, emptyString);		
+  start_html_page(page_content, emptyString);	
+  server.sendContent(page_content);
+  page_content = emptyString;
+
+  set_color_picker(page_content);
+  server.sendContent(page_content);
+  page_content = emptyString;
+
   end_html_page(page_content);
 }
 
