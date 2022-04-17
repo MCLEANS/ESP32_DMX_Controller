@@ -39,6 +39,8 @@ struct struct_wifiInfo {
 struct struct_wifiInfo *wifiInfo;
 uint8_t count_wifiInfo;
 
+char wifi_ssid[LEN_WLAN_SSID];
+char wifi_password[LEN_WLAN_PWD];
 
 WebServer server(80);
 DNSServer dnsServer;
@@ -81,8 +83,8 @@ void configure_leds(Led_config config){
 
 bool save_config(){
   StaticJsonDocument<200> doc;
-  //doc["wifi_credentials"]["ssid"] = wifi_ssid;
-  //doc["wifi_credentials"]["password"] = wifi_password;
+  doc["wifi_credentials"]["ssid"] = wifi_ssid;
+  doc["wifi_credentials"]["password"] = wifi_password;
   doc["ws2812"]["segment_index"] = ws2812_config.segment_index;
   doc["ws2812"]["start_index"] = ws2812_config.start_index;
   doc["ws2812"]["stop_index"] = ws2812_config.stop_index;
@@ -129,6 +131,8 @@ bool load_config(){
     return false;
   }
 
+  strcpy(wifi_ssid ,doc["wifi_credentials"]["ssid"]);
+  strcpy(wifi_password ,doc["wifi_credentials"]["password"]);
   ws2812_config.segment_index = (uint8_t) doc["ws2812"]["segment_index"];
   ws2812_config.start_index = (uint16_t) doc["ws2812"]["start_index"];
   ws2812_config.stop_index = (uint16_t) doc["ws2812"]["stop_index"];
@@ -307,15 +311,78 @@ static void wifiConfig() {
 
 	setup_webserver();
 
+  unsigned long wifi_config_start_time = millis();
+	while ((millis() - wifi_config_start_time) < 500 + 500) {
+		dnsServer.processNextRequest();
+		server.handleClient();
+		yield();
+	}
+
+  WiFi.softAPdisconnect(true);
+	WiFi.mode(WIFI_STA);
+
+	dnsServer.stop();
+	delay(100);
+
+	Serial.print("Connecting to ");
+  Serial.println(wifi_ssid);
+
+	WiFi.begin(wifi_ssid, wifi_password);
 }
 
 static void waitForWifiToConnect(int maxRetries) {
 	int retryCount = 0;
 	while ((WiFi.status() != WL_CONNECTED) && (retryCount < maxRetries)) {
 		delay(500);
+    Serial.print(".");
 		++retryCount;
 	}
 }
+
+void init_wifi_credentials(String chip_id){
+  strcpy(wifi_ssid, STA_SSID);
+  strcpy(wifi_password,STA_PASSWORD);
+}
+
+/*****************************************************************
+ * WiFi auto connecting script                                   *
+ *****************************************************************/
+static void connectWifi() {
+	if (WiFi.getAutoConnect()) {
+		WiFi.setAutoConnect(false);
+	}
+	if (!WiFi.getAutoReconnect()) {
+		WiFi.setAutoReconnect(true);
+	}
+	WiFi.mode(WIFI_STA);
+	WiFi.hostname(AP_ssid);
+	WiFi.begin(wifi_ssid, wifi_password); // Start WiFI
+
+  Serial.print("Connecting to ");
+  Serial.print(wifi_ssid);
+  Serial.print(" Password : ");
+  Serial.println(wifi_password);
+
+	waitForWifiToConnect(40);
+	if (WiFi.status() != WL_CONNECTED) {
+		String fss(AP_ssid);
+		wifiConfig();
+		if (WiFi.status() != WL_CONNECTED) {
+			waitForWifiToConnect(20);
+      Serial.println("");
+		}
+	}
+
+  Serial.print("WiFi connected, IP is: ");
+  Serial.println(WiFi.localIP().toString());
+	//last_signal_strength = WiFi.RSSI();
+
+	if (MDNS.begin(AP_ssid)) {
+		MDNS.addService("http", "tcp", 80);
+		MDNS.addServiceTxt("http", "tcp", "PATH", "/");
+	}
+}
+
 
 void setup() {
   Serial.begin(115200);
@@ -332,10 +399,13 @@ void setup() {
 	esp_chipid = String((uint16_t)(chipid_num >> 32), HEX);
 	esp_chipid += String((uint32_t)chipid_num, HEX);
 
-  WiFi.persistent(false);
-  wifiConfig();
+  init_wifi_credentials(esp_chipid);
   /* Read configuration file from flash */
   load_config();
+
+  WiFi.persistent(false);
+  connectWifi();
+  setup_webserver();
 
   /* Initialize ws2812 leds */
   ws2812fx.init();
@@ -349,8 +419,5 @@ void setup() {
 
 void loop() {
   ws2812fx.service();
-  dnsServer.processNextRequest();
-	server.handleClient();
-	yield();
   
 }
