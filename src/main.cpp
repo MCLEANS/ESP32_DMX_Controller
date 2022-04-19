@@ -1,9 +1,9 @@
 #include <Arduino.h>
+#include <WiFi.h>
+#include <WebServer.h>
 #include <WS2812FX.h>
 #include <SPIFFS.h>
 #include <ArduinoJson.h>
-#include <WiFi.h>
-#include <WebServer.h>
 #include <ESPmDNS.h>
 #include <DNSServer.h>
 
@@ -14,16 +14,10 @@
 
 #include "defines.h"
 #include "html_content.h"
+#include "UI.h"
 
-/******************************************************************
- * String Constants                                               *
- ******************************************************************/
-constexpr unsigned SMALL_STR = 64-1;
-constexpr unsigned MED_STR = 256-1;
-constexpr unsigned LARGE_STR = 512-1;
-constexpr unsigned XLARGE_STR = 1024-1;
-
-#define RESERVE_STRING(name, size) String name((const char*)nullptr); name.reserve(size)
+WebServer server(80);
+UI ui;
 
 String esp_chipid;
 
@@ -42,7 +36,6 @@ uint8_t count_wifiInfo;
 char wifi_ssid[LEN_WLAN_SSID];
 char wifi_password[LEN_WLAN_PWD];
 
-WebServer server(80);
 DNSServer dnsServer;
 
 WS2812FX ws2812fx = WS2812FX(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
@@ -150,51 +143,6 @@ bool load_config(){
   return true;
 }
 
-/*****************************************************************
- * html helper functions                                         *
- *****************************************************************/
-
-static void start_html_page(String& page_content, const String& title) {
-	RESERVE_STRING(s, LARGE_STR);
-	s = FPSTR(WEB_PAGE_HEADER);
-	s.replace("{t}", title);
-	server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-	server.send(200, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), s);
-
-	server.sendContent_P(WEB_PAGE_HEADER_HEAD);
-
-	s = FPSTR(WEB_PAGE_HEADER_BODY);
-	s.replace("{t}", title);
-	if (title != " ") {
-		s.replace("{n}", F("&raquo;"));
-	} else {
-		s.replace("{n}", emptyString);
-	}
-	s.replace("{id}", esp_chipid);
-	s.replace("{mac}", WiFi.macAddress());
-
-	page_content += s;
-}
-
-static void set_color_picker(String& page_content){
-  RESERVE_STRING(s, LARGE_STR);
-  s = FPSTR(WEB_PAGE_COLOR_PICKER);
-
-  String hex_color = "#";
-  hex_color.concat(String(ws2812_config.color,HEX));
-  s.replace("{led_color}",hex_color);
-
-  page_content += s;
-
-}
-
-static void end_html_page(String& page_content) {
-	if (page_content.length()) {
-		server.sendContent(page_content);
-	}
-	server.sendContent_P(WEB_PAGE_FOOTER);
-}
-
 static void sendHttpRedirect() {
 	server.sendHeader(F("Location"), F("http://192.168.4.1/"));
 	server.send(302, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), emptyString);
@@ -206,15 +154,15 @@ static void sendHttpRedirect() {
  *****************************************************************/
 static void webserver_root() {
   RESERVE_STRING(page_content, XLARGE_STR);
-  start_html_page(page_content, emptyString);	
+  ui.start_html_page(server,page_content, emptyString, esp_chipid, WiFi.macAddress());	
   server.sendContent(page_content);
   page_content = emptyString;
 
-  set_color_picker(page_content);
+  ui.set_color_picker(page_content);
   server.sendContent(page_content);
   page_content = emptyString;
 
-  end_html_page(page_content);
+  ui.end_html_page(server,page_content);
 }
 
 static void webserver_not_found() {
