@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
-#include <WS2812FX.h>
 #include <SPIFFS.h>
 #include <ArduinoJson.h>
 #include <ESPmDNS.h>
@@ -15,6 +14,7 @@
 #include "defines.h"
 #include "html_content.h"
 #include "UI.h"
+#include "ws2812.h"
 
 WebServer server(80);
 UI ui;
@@ -38,20 +38,9 @@ char wifi_password[LEN_WLAN_PWD];
 
 DNSServer dnsServer;
 
-WS2812FX ws2812fx = WS2812FX(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+WS2812 ws2812fx = WS2812(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
-struct Led_config{
-    uint8_t segment_index;
-    uint16_t start_index;
-    uint16_t stop_index;
-    uint8_t mode;
-    uint32_t color;
-    uint16_t speed;
-    bool reverse;
-    uint8_t brightness;
-};
-
-Led_config ws2812_config = {
+WS2812_config ws2812_config = {
   0,
   0,
   LED_COUNT - 1,
@@ -61,18 +50,6 @@ Led_config ws2812_config = {
   false,
   255,
 };
-
-void configure_leds(Led_config config){
-  ws2812fx.setBrightness(config.brightness);
-
-  ws2812fx.setSegment(config.segment_index,
-                        config.start_index, 
-                        config.stop_index,
-                        config.mode, 
-                        config.color, 
-                        config.speed, 
-                        config.reverse);
-}
 
 bool save_config(){
   StaticJsonDocument<200> doc;
@@ -182,7 +159,7 @@ static void handle_color_picker(){
     Serial.print("Received color : ");
     ws2812_config.color = (uint32_t)strtol(server.arg("color").c_str(), NULL, 16);
     /* Configure ws2812 leds */
-    configure_leds(ws2812_config);
+    ws2812fx.configure(ws2812_config);
     /* Start leds */
     ws2812fx.start();
     save_config();    
@@ -357,10 +334,8 @@ void setup() {
 
   /* Initialize ws2812 leds */
   ws2812fx.init();
-
   /* Configure ws2812 leds */
-  configure_leds(ws2812_config);
-
+  ws2812fx.configure(ws2812_config);
   /* Start leds */
   ws2812fx.start();
 }
