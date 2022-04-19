@@ -1,6 +1,7 @@
 #ifndef _WS2812_H
 #define _WS2812_H
 
+#include <Arduino.h>
 #include <WS2812FX.h>
 
 struct WS2812_config{

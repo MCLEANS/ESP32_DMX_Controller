@@ -16,6 +16,4 @@ char STA_PASSWORD[] = "12345678";  //Enter Password here
 #define LED_COUNT 17
 #define LED_PIN 5
 
-#define MAX_FILE_SIZE 4096
-
 #endif //DEFINES_H
