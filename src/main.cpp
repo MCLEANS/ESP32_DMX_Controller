@@ -52,7 +52,7 @@ static void sendHttpRedirect() {
 /*****************************************************************
  * Webserver root: show all options                              *
  *****************************************************************/
-static void webserver_root() {
+static void webserver_control() {
   RESERVE_STRING(page_content, XLARGE_STR);
   ui.start_html_page(server,page_content, emptyString, esp_chipid, WiFi.macAddress());	
   server.sendContent(page_content);
@@ -96,7 +96,7 @@ static void handle_color_picker(){
  * Webserver setup                                               *
  *****************************************************************/
 static void setup_webserver() {
-	server.on("/", webserver_root);
+	server.on("/control", webserver_control);
   server.on("/color_picker", handle_color_picker);
   server.onNotFound(webserver_not_found);
 	server.begin();
