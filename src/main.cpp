@@ -9,19 +9,15 @@
 
 #include <string.h>
 
-#include "file_handler.h"
 #include "defines.h"
+#include "file_handler.h"
 #include "html_content.h"
 #include "UI.h"
 #include "ws2812.h"
 
-
 String esp_chipid;
-
-#define LEN_WLANSSID 35				// credentials for wifi connection
-
 struct struct_wifiInfo {
-	char ssid[LEN_WLANSSID];
+	char ssid[LEN_WLAN_SSID];
 	uint8_t encryptionType;
 	int32_t RSSI;
 	int32_t channel;
@@ -30,9 +26,7 @@ struct struct_wifiInfo {
 struct struct_wifiInfo *wifiInfo;
 uint8_t count_wifiInfo;
 
-char wifi_ssid[LEN_WLAN_SSID];
-char wifi_password[LEN_WLAN_PWD];
-
+WIFI_credentials wifi_credentials;
 File_handler config_file;
 UI ui;
 WebServer server(80);
@@ -54,7 +48,6 @@ static void sendHttpRedirect() {
 	server.sendHeader(F("Location"), F("http://192.168.4.1/"));
 	server.send(302, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), emptyString);
 }
-
 
 /*****************************************************************
  * Webserver root: show all options                              *
@@ -92,7 +85,7 @@ static void handle_color_picker(){
     ws2812fx.configure(ws2812_config);
     /* Start leds */
     ws2812fx.start();
-    config_file.save(ws2812_config); 
+    config_file.save(ws2812_config, wifi_credentials); 
   }
   else{
     Serial.println("Unknown Parameter");
@@ -180,9 +173,9 @@ static void wifiConfig() {
 	delay(100);
 
 	Serial.print("Connecting to ");
-  Serial.println(wifi_ssid);
+  Serial.println(wifi_credentials.wifi_ssid);
 
-	WiFi.begin(wifi_ssid, wifi_password);
+	WiFi.begin(wifi_credentials.wifi_ssid, wifi_credentials.wifi_password);
 }
 
 static void waitForWifiToConnect(int maxRetries) {
@@ -195,8 +188,8 @@ static void waitForWifiToConnect(int maxRetries) {
 }
 
 void init_wifi_credentials(String chip_id){
-  strcpy(wifi_ssid, STA_SSID);
-  strcpy(wifi_password,STA_PASSWORD);
+  strcpy(wifi_credentials.wifi_ssid, STA_SSID);
+  strcpy(wifi_credentials.wifi_password,STA_PASSWORD);
 }
 
 /*****************************************************************
@@ -211,12 +204,12 @@ static void connectWifi() {
 	}
 	WiFi.mode(WIFI_STA);
 	WiFi.hostname(AP_ssid);
-	WiFi.begin(wifi_ssid, wifi_password); // Start WiFI
+	WiFi.begin(wifi_credentials.wifi_ssid, wifi_credentials.wifi_password); // Start WiFI
 
   Serial.print("Connecting to ");
-  Serial.print(wifi_ssid);
+  Serial.print(wifi_credentials.wifi_ssid);
   Serial.print(" Password : ");
-  Serial.println(wifi_password);
+  Serial.println(wifi_credentials.wifi_password);
 
 	waitForWifiToConnect(40);
 	if (WiFi.status() != WL_CONNECTED) {
@@ -241,13 +234,8 @@ static void connectWifi() {
 
 void setup() {
   Serial.begin(115200);
-  /* Mount file system */
-  Serial.println("Mounting FS...");
-  if(!SPIFFS.begin(true)){
-      Serial.println("An Error has occurred while mounting SPIFFS");
-      return;
-  }
-
+  /* Initialize config file */
+  config_file.init();
   /* Read chip-ID */
   uint64_t chipid_num;
 	chipid_num = ESP.getEfuseMac();
@@ -256,7 +244,7 @@ void setup() {
 
   init_wifi_credentials(esp_chipid);
   /* Read configuration file from flash */
-  config_file.load(ws2812_config);
+  config_file.load(ws2812_config,wifi_credentials);
 
   WiFi.persistent(false);
   connectWifi();

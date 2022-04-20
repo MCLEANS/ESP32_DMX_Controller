@@ -4,10 +4,20 @@ File_handler::File_handler(){
 
 }
 
-bool File_handler::save(WS2812_config &ws2812_config){
+void File_handler::init(){
+    /* Mount file system */
+    Serial.println("Mounting FS...");
+
+    if(!SPIFFS.begin(true)){
+      Serial.println("An Error has occurred while mounting SPIFFS");
+      return;
+  }
+}
+
+bool File_handler::save(WS2812_config &ws2812_config, WIFI_credentials &credentials){
     StaticJsonDocument<200> doc;
-    //doc["wifi_credentials"]["ssid"] = wifi_ssid;
-    //doc["wifi_credentials"]["password"] = wifi_password;
+    doc["wifi_credentials"]["ssid"] = credentials.wifi_ssid;
+    doc["wifi_credentials"]["password"] = credentials.wifi_password;
     doc["ws2812"]["segment_index"] = ws2812_config.segment_index;
     doc["ws2812"]["start_index"] = ws2812_config.start_index;
     doc["ws2812"]["stop_index"] = ws2812_config.stop_index;
@@ -26,7 +36,7 @@ bool File_handler::save(WS2812_config &ws2812_config){
     return true;
 }
 
-bool File_handler::load(WS2812_config &ws2812_config){
+bool File_handler::load(WS2812_config &ws2812_config, WIFI_credentials &credentials){
     File configFile = SPIFFS.open(filename, "r");
     if (!configFile) {
         Serial.println("Failed to open config file");
@@ -54,8 +64,8 @@ bool File_handler::load(WS2812_config &ws2812_config){
         return false;
     }
 
-    //strcpy(wifi_ssid ,doc["wifi_credentials"]["ssid"]);
-    //strcpy(wifi_password ,doc["wifi_credentials"]["password"]);
+    strcpy(credentials.wifi_ssid ,doc["wifi_credentials"]["ssid"]);
+    strcpy(credentials.wifi_password ,doc["wifi_credentials"]["password"]);
     ws2812_config.segment_index = (uint8_t) doc["ws2812"]["segment_index"];
     ws2812_config.start_index = (uint16_t) doc["ws2812"]["start_index"];
     ws2812_config.stop_index = (uint16_t) doc["ws2812"]["stop_index"];

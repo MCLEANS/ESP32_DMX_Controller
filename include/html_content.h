@@ -1,5 +1,5 @@
-#ifndef HTML_CONTENT_H
-#define HTML_CONTENT_H
+#ifndef _HTML_CONTENT_H
+#define _HTML_CONTENT_H
 
 const char TXT_CONTENT_TYPE_JSON[] PROGMEM = "application/json";
 const char TXT_CONTENT_TYPE_INFLUXDB[] PROGMEM = "application/x-www-form-urlencoded";
@@ -71,4 +71,4 @@ window.location = \"http://192.168.4.1\";\
 </script>\
 </body></html>";
 
-#endif //HTML_CONTENT_H
+#endif //_HTML_CONTENT_H
