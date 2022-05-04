@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <html_content.h>
 #include <WebServer.h>
+#include "ws2812.h"
 
 /******************************************************************
  * String Constants                                               *
@@ -21,7 +22,7 @@ class UI{
     public:
         UI();
         void start_html_page(WebServer& server,String& page_content, const String& title, const String& esp_chipid, String address);
-        void set_color_picker(String& page_content);
+        void set_color_picker(String& page_content, WS2812_config &ws2812_config);
         void end_html_page(WebServer& server,String& page_content);
         ~UI();
     public:

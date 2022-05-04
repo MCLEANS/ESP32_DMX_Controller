@@ -11,7 +11,7 @@ const char TXT_CONTENT_TYPE_IMAGE_PNG[] PROGMEM = "image/png";
 #define WEB_BOARD_NAME "DMX CONTROLLER"
 #define WEB_FIRMWARE  "Firmware Version"
 #define WEB_FIRMWARE_VERSION  "DMX_V1.0.0.2022"
-#define WEB_HOME  "Home"
+#define WEB_HOME  "CONTROL"
 #define WEB_BACK_TO_HOME  "Back to Home"
 
 
@@ -34,21 +34,27 @@ input[type='submit']:hover {background:#d44} \
 .s_green{padding:9px !important;width:100%;border-style:none;background:#3bf;color:white;text-align:left;}\
 </style>\
 </head><body>\
-<div id='nav' style='min-height:129px;background-color:#3ba;margin-bottom:20px;box-shadow:0px 4px 6px #3ba'>\
+<div id='nav' style='min-height:129px;color:white;background:#3ba;margin-bottom:20px;box-shadow:0px 4px 6px #3ba'>\
 <a href='/' style='background:none;display:inline'><img src='/images?name=luftdaten_logo' style='float:left;margin:20px' width='100' height='89'/></a>";
 
 const char WEB_PAGE_HEADER_BODY[] PROGMEM = "<h3 style='margin:0'>" WEB_BOARD_NAME "</h3>\
 <small>ID: {id}<br/>MAC: {mac}<br/>" WEB_FIRMWARE ": " WEB_FIRMWARE_VERSION "<br/>(" __DATE__ " " __TIME__ ")<br/>\
 <a href='link to issues page' target='_blank' rel='noreferrer'>Report an issue</a>\
 </small></div>\
-<div class='content'><h4>" WEB_HOME " {n} {t}";
+<div class='content'><h4>" WEB_HOME " {n} {t} </h4>";
 
-const char WEB_PAGE_COLOR_PICKER[] PROGMEM = "</h4><label for='colorpicker'>Color Picker:</label><input type='color' id='colorpicker' value='{led_color}'><hr>\
+/*************************** CONTROL PAGE START *************************************************/
+const char WEB_PAGE_COLOR_PICKER[] PROGMEM = "\
+ <div class='picker' >\
+    <p>\
+        <label for='colorpicker'>Color Picker : </label> <input style='width : 30%' type='color' id='colorpicker' value='{led_color}'>\
+        <hr>\
+    </p>\
+</div>\
 <script>\  
 function changeColor(){\
     document.getElementById('colorpicker').addEventListener('change', (e) => {\
         let color_value =  e.target.value;\
-        document.getElementById('nav').style.backgroundColor = color_value; \
         console.log(typeof 'color_value');\
         var xhttp = new XMLHttpRequest();\
         let payload_header = 'color_picker?color=';\
@@ -60,6 +66,15 @@ function changeColor(){\
 };\
 changeColor();\
 </script>";
+/*************************** CONTROL PAGE END *************************************************/
+
+/*************************** CONFIGURATION  PAGE START *****************************************/
+
+
+/*************************** CONFIGURATION  PAGE END ******************************************/
+
+
+
 
 const char WEB_PAGE_FOOTER[] PROGMEM = "<br/><br/><a href='/' style='display:inline;'>" WEB_BACK_TO_HOME "</a>"
                 "<br/><br/><br/>"

@@ -21,7 +21,7 @@ class WS2812 : public WS2812FX{
     public:
     public:
         WS2812(uint16_t num_leds, uint8_t pin, neoPixelType type);
-        void configure(WS2812_config ws2812_config);
+        void configure(WS2812_config &config);
         ~WS2812();
 
 };

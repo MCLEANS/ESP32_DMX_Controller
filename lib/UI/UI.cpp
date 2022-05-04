@@ -26,12 +26,12 @@ void UI::start_html_page(WebServer& server, String& page_content, const String& 
 	page_content += s;
 }
 
-void UI::set_color_picker(String& page_content){
+void UI::set_color_picker(String& page_content, WS2812_config &ws2812_config){
   RESERVE_STRING(s, LARGE_STR);
   s = FPSTR(WEB_PAGE_COLOR_PICKER);
 
   String hex_color = "#";
-  //hex_color.concat(String(ws2812_config.color,HEX));
+  hex_color.concat(String(ws2812_config.color,HEX));
   s.replace("{led_color}",hex_color);
 
   page_content += s;

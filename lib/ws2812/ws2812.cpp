@@ -8,7 +8,7 @@ WS2812::WS2812(uint16_t num_leds, uint8_t pin, neoPixelType type):WS2812FX(num_l
 }
 
 
-void WS2812::configure(WS2812_config config){
+void WS2812::configure(WS2812_config &config){
     setBrightness(config.brightness);
 
     setSegment(config.segment_index,

@@ -15,6 +15,8 @@ void File_handler::init(){
 }
 
 bool File_handler::save(WS2812_config &ws2812_config, WIFI_credentials &credentials){
+    Serial.println("Saving configuration file ..");
+
     StaticJsonDocument<200> doc;
     doc["wifi_credentials"]["ssid"] = credentials.wifi_ssid;
     doc["wifi_credentials"]["password"] = credentials.wifi_password;
@@ -37,6 +39,8 @@ bool File_handler::save(WS2812_config &ws2812_config, WIFI_credentials &credenti
 }
 
 bool File_handler::load(WS2812_config &ws2812_config, WIFI_credentials &credentials){
+    Serial.println("Loading configuration file ..");
+
     File configFile = SPIFFS.open(filename, "r");
     if (!configFile) {
         Serial.println("Failed to open config file");
@@ -77,7 +81,7 @@ bool File_handler::load(WS2812_config &ws2812_config, WIFI_credentials &credenti
 
     String ws2812_configurations;
     serializeJson(doc, ws2812_configurations);
-    Serial.print("Configuration File : ");
+    Serial.print("Configuration JSON : ");
     Serial.println(ws2812_configurations);
 
     return true;

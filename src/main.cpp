@@ -4,6 +4,10 @@
 #include <ESPmDNS.h>
 #include <DNSServer.h>
 
+#include <SPI.h>
+#include "Ethernet_Generic.h"
+#include <EthernetWebServer.h>
+
 #include <uri/UriBraces.h>
 #include <uri/UriRegex.h>
 
@@ -14,6 +18,33 @@
 #include "html_content.h"
 #include "UI.h"
 #include "ws2812.h"
+
+#define USE_THIS_SS_PIN   5 // For ESP32
+#define NUMBER_OF_MAC     20
+
+byte mac[][NUMBER_OF_MAC] =
+{
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0x01 },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xBE, 0x02 },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0x03 },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xBE, 0x04 },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0x05 },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xBE, 0x06 },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0x07 },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xBE, 0x08 },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0x09 },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xBE, 0x0A },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0x0B },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xBE, 0x0C },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0x0D },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xBE, 0x0E },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0x0F },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xBE, 0x10 },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0x11 },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xBE, 0x12 },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0x13 },
+  { 0xDE, 0xAD, 0xBE, 0xEF, 0xBE, 0x14 },
+};
 
 String esp_chipid;
 struct struct_wifiInfo {
@@ -31,7 +62,7 @@ File_handler config_file;
 UI ui;
 WebServer server(80);
 DNSServer dnsServer;
-WS2812 ws2812fx = WS2812(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+WS2812 ws2812fx(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 WS2812_config ws2812_config = {
   0,
@@ -58,7 +89,7 @@ static void webserver_control() {
   server.sendContent(page_content);
   page_content = emptyString;
 
-  ui.set_color_picker(page_content);
+  ui.set_color_picker(page_content, ws2812_config);
   server.sendContent(page_content);
   page_content = emptyString;
 
@@ -79,12 +110,15 @@ static void webserver_not_found() {
 
 static void handle_color_picker(){
   if (server.hasArg("color")) {
-    Serial.print("Received color : ");
+    Serial.print("Color Updated to : ");
+    Serial.println(server.arg("color"));
+
     ws2812_config.color = (uint32_t)strtol(server.arg("color").c_str(), NULL, 16);
     /* Configure ws2812 leds */
     ws2812fx.configure(ws2812_config);
     /* Start leds */
     ws2812fx.start();
+    /* Save updated configuration to config file */
     config_file.save(ws2812_config, wifi_credentials); 
   }
   else{
@@ -92,13 +126,10 @@ static void handle_color_picker(){
   }
 }
 
-/*****************************************************************
- * Webserver setup                                               *
- *****************************************************************/
 static void setup_webserver() {
-	server.on("/control", webserver_control);
-  server.on("/color_picker", handle_color_picker);
-  server.onNotFound(webserver_not_found);
+	server.on("/", webserver_control);
+  	server.on("/color_picker", handle_color_picker);
+  	server.onNotFound(webserver_not_found);
 	server.begin();
 }
 
@@ -223,32 +254,64 @@ static void connectWifi() {
 
   Serial.print("WiFi connected, IP is: ");
   Serial.println(WiFi.localIP().toString());
-	//last_signal_strength = WiFi.RSSI();
+  //last_signal_strength = WiFi.RSSI();
 
-	if (MDNS.begin(AP_ssid)) {
-		MDNS.addService("http", "tcp", 80);
-		MDNS.addServiceTxt("http", "tcp", "PATH", "/");
+  if (MDNS.begin(AP_ssid)) {
+	MDNS.addService("http", "tcp", 80);
+	MDNS.addServiceTxt("http", "tcp", "PATH", "/");
 	}
 }
 
-
 void setup() {
   Serial.begin(115200);
+
   /* Initialize config file */
   config_file.init();
+
   /* Read chip-ID */
   uint64_t chipid_num;
-	chipid_num = ESP.getEfuseMac();
-	esp_chipid = String((uint16_t)(chipid_num >> 32), HEX);
-	esp_chipid += String((uint32_t)chipid_num, HEX);
+  chipid_num = ESP.getEfuseMac();
+  esp_chipid = String((uint16_t)(chipid_num >> 32), HEX);
+  esp_chipid += String((uint32_t)chipid_num, HEX);
 
   init_wifi_credentials(esp_chipid);
+
   /* Read configuration file from flash */
   config_file.load(ws2812_config,wifi_credentials);
 
   WiFi.persistent(false);
-  connectWifi();
-  setup_webserver();
+  
+  Ethernet.init(USE_THIS_SS_PIN); 
+  uint16_t index = millis() % NUMBER_OF_MAC;
+  // Use Static IP
+  //Ethernet.begin(mac[index], ip);
+  Ethernet.begin(mac[index]);
+  
+  if(Ethernet.hardwareStatus() == EthernetNoHardware){
+	  Serial.println("No Ethernet found. Stay here forever");
+	  while(true){
+		  delay(1); // do nothing, no point running without Ethernet hardware
+		}
+  }
+  
+  if (Ethernet.linkStatus() == LinkOFF) {
+	  Serial.println("Not connected Ethernet cable");
+  }
+  
+  Serial.print(F("Using mac index = "));
+  Serial.println(index);
+
+  Serial.print(F("Connected! IP address: "));
+  Serial.println(Ethernet.localIP());
+  
+  //connectWifi();
+  //setup_webserver();
+
+  /* Setup mDNS */
+  if(!MDNS.begin("esp32")) {
+     Serial.println("Error starting mDNS");
+     return;
+	} 
 
   /* Initialize ws2812 leds */
   ws2812fx.init();

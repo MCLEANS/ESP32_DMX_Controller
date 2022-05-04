@@ -1,8 +1,10 @@
 #ifndef _DEFINES_H
 #define _DEFINES_H
 
+/* Ethernet variables and constants */
+// Enter a MAC address and IP address for your controller below.
 
-#define MAX_FILE_SIZE 4096
+#define MAX_FILE_SIZE 8192
 
 #define LEN_WLAN_SSID 35
 #define LEN_WLAN_PWD 65
@@ -21,7 +23,7 @@ const char AP_password[] = "";  //Enter Password here
 const char STA_SSID[] = "geviton_wireless";  // Enter SSID here
 const char STA_PASSWORD[] = "1234ninye#";  //Enter Password here
 
-#define LED_COUNT 17
-#define LED_PIN 5
+#define LED_COUNT 16
+#define LED_PIN 4
 
 #endif //_DEFINES_H
