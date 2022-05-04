@@ -4,14 +4,20 @@ UI::UI(){
 
 }
 
-void UI::start_html_page(WebServer& server, String& page_content, const String& title, const String& esp_chipid, String address) {
+void UI::start_html_page(EthernetWebServer& server_e, WebServer& server_w, String& page_content, const String& title, const String& esp_chipid, String address) {
 	RESERVE_STRING(s, LARGE_STR);
 	s = FPSTR(WEB_PAGE_HEADER);
 	s.replace("{t}", title);
-	server.setContentLength(CONTENT_LENGTH_UNKNOWN);
-	server.send(200, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), s);
-
-	server.sendContent_P(WEB_PAGE_HEADER_HEAD);
+	if(this->is_ethernet_enabled){
+		server_e.setContentLength(CONTENT_LENGTH_UNKNOWN);
+		server_e.send(200, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), s);
+		server_e.sendContent_P(WEB_PAGE_HEADER_HEAD);
+	}
+	else{
+		server_w.setContentLength(CONTENT_LENGTH_UNKNOWN);
+		server_w.send(200, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), s);
+		server_w.sendContent_P(WEB_PAGE_HEADER_HEAD);
+	}	
 
 	s = FPSTR(WEB_PAGE_HEADER_BODY);
 	s.replace("{t}", title);
@@ -38,11 +44,19 @@ void UI::set_color_picker(String& page_content, WS2812_config &ws2812_config){
 
 }
 
-void UI::end_html_page(WebServer& server, String& page_content) {
+void UI::end_html_page(EthernetWebServer& server_e, WebServer& server_w, String& page_content) {
 	if (page_content.length()) {
-		server.sendContent(page_content);
+		if(this->is_ethernet_enabled){
+			server_e.sendContent(page_content);
+		}
+		else{
+			server_w.sendContent(page_content);
+		}
+		
 	}
-	server.sendContent_P(WEB_PAGE_FOOTER);
+	if(this->is_ethernet_enabled) server_e.sendContent_P(WEB_PAGE_FOOTER);
+	else server_w.sendContent_P(WEB_PAGE_FOOTER);
+	
 }
 
 UI::~UI(){

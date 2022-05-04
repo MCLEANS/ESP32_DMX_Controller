@@ -1,9 +1,11 @@
-#ifndef _UI_H
-#define _UI_H
+#ifndef _UI_H_
+#define _UI_H_
 
 #include <Arduino.h>
 #include <html_content.h>
 #include <WebServer.h>
+#include <EthernetWebServer.hpp>
+
 #include "ws2812.h"
 
 /******************************************************************
@@ -16,16 +18,18 @@ constexpr unsigned XLARGE_STR = 1024-1;
 
 #define RESERVE_STRING(name, size) String name((const char*)nullptr); name.reserve(size)
 
+
 class UI{
     private:
     private:
     public:
-        UI();
-        void start_html_page(WebServer& server,String& page_content, const String& title, const String& esp_chipid, String address);
-        void set_color_picker(String& page_content, WS2812_config &ws2812_config);
-        void end_html_page(WebServer& server,String& page_content);
-        ~UI();
+        bool is_ethernet_enabled = true;
     public:
+        UI();
+        void start_html_page(EthernetWebServer& server_e, WebServer& server_w, String& page_content, const String& title, const String& esp_chipid, String address);
+        void set_color_picker(String& page_content, WS2812_config &ws2812_config);
+        void end_html_page(EthernetWebServer& server_e, WebServer& server_w, String& page_content);
+        ~UI();
 };
 
-#endif //_UI_H
+#endif //_UI_H_

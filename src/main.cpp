@@ -6,7 +6,9 @@
 
 #include <SPI.h>
 #include "Ethernet_Generic.h"
-#include <EthernetWebServer.h>
+#include "EthernetWebServer-impl.h"
+#include "Parsing-impl.h"
+#include <EthernetWebServer.hpp>
 
 #include <uri/UriBraces.h>
 #include <uri/UriRegex.h>
@@ -21,6 +23,7 @@
 
 #define USE_THIS_SS_PIN   5 // For ESP32
 #define NUMBER_OF_MAC     20
+
 
 byte mac[][NUMBER_OF_MAC] =
 {
@@ -60,7 +63,9 @@ uint8_t count_wifiInfo;
 WIFI_credentials wifi_credentials;
 File_handler config_file;
 UI ui;
-WebServer server(80);
+
+WebServer server_wifi(80);
+EthernetWebServer server_eth(80); 
 DNSServer dnsServer;
 WS2812 ws2812fx(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -76,8 +81,15 @@ WS2812_config ws2812_config = {
 };
 
 static void sendHttpRedirect() {
-	server.sendHeader(F("Location"), F("http://192.168.4.1/"));
-	server.send(302, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), emptyString);
+	if(ui.is_ethernet_enabled){
+		server_eth.sendHeader(F("Location"), F("http://192.168.4.1/"));
+		server_eth.send(302, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), emptyString);
+	}
+	else{
+		server_wifi.sendHeader(F("Location"), F("http://192.168.4.1/"));
+		server_wifi.send(302, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), emptyString);
+	}
+	
 }
 
 /*****************************************************************
@@ -85,35 +97,47 @@ static void sendHttpRedirect() {
  *****************************************************************/
 static void webserver_control() {
   RESERVE_STRING(page_content, XLARGE_STR);
-  ui.start_html_page(server,page_content, emptyString, esp_chipid, WiFi.macAddress());	
-  server.sendContent(page_content);
+  ui.start_html_page(server_eth,server_wifi, page_content, emptyString, esp_chipid, WiFi.macAddress());	
+
+  if(ui.is_ethernet_enabled)server_eth.sendContent(page_content);
+  else server_wifi.sendContent(page_content);
+
   page_content = emptyString;
 
   ui.set_color_picker(page_content, ws2812_config);
-  server.sendContent(page_content);
+
+  if(ui.is_ethernet_enabled)server_eth.sendContent(page_content);
+  else server_wifi.sendContent(page_content);
+
   page_content = emptyString;
 
-  ui.end_html_page(server,page_content);
+  ui.end_html_page(server_eth,server_wifi,page_content);
 }
 
 static void webserver_not_found() {
 	if (WiFi.status() != WL_CONNECTED) {
-		if ((server.uri().indexOf(F("success.html")) != -1) || (server.uri().indexOf(F("detect.html")) != -1)) {
-			server.send(200, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), FPSTR(WEB_IOS_REDIRECT));
+		if ((server_wifi.uri().indexOf(F("success.html")) != -1) || (server_wifi.uri().indexOf(F("detect.html")) != -1)) {
+			server_wifi.send(200, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), FPSTR(WEB_IOS_REDIRECT));
 		} else {
 			sendHttpRedirect();
 		}
 	} else {
-		server.send(404, FPSTR(TXT_CONTENT_TYPE_TEXT_PLAIN), F("Not found."));
+		server_wifi.send(404, FPSTR(TXT_CONTENT_TYPE_TEXT_PLAIN), F("Not found."));
 	}
 }
 
 static void handle_color_picker(){
-  if (server.hasArg("color")) {
+  if (server_wifi.hasArg("color") || server_eth.hasArg("color")) {
     Serial.print("Color Updated to : ");
-    Serial.println(server.arg("color"));
-
-    ws2812_config.color = (uint32_t)strtol(server.arg("color").c_str(), NULL, 16);
+	if(ui.is_ethernet_enabled){
+		Serial.println(server_eth.arg("color"));
+		ws2812_config.color = (uint32_t)strtol(server_eth.arg("color").c_str(), NULL, 16);
+	}
+	else{
+		Serial.println(server_wifi.arg("color"));
+		ws2812_config.color = (uint32_t)strtol(server_wifi.arg("color").c_str(), NULL, 16);
+	}
+    
     /* Configure ws2812 leds */
     ws2812fx.configure(ws2812_config);
     /* Start leds */
@@ -127,10 +151,19 @@ static void handle_color_picker(){
 }
 
 static void setup_webserver() {
-	server.on("/", webserver_control);
-  	server.on("/color_picker", handle_color_picker);
-  	server.onNotFound(webserver_not_found);
-	server.begin();
+	if(ui.is_ethernet_enabled){
+		server_eth.on("/", webserver_control);
+		server_eth.on("/color_picker", handle_color_picker);
+		server_eth.onNotFound(webserver_not_found);
+		server_eth.begin();
+	}
+	else{
+		server_wifi.on("/", webserver_control);
+		server_wifi.on("/color_picker", handle_color_picker);
+		server_wifi.onNotFound(webserver_not_found);
+		server_wifi.begin();
+	}
+	
 }
 
 static int selectChannelForAp() {
@@ -193,7 +226,7 @@ static void wifiConfig() {
   unsigned long wifi_config_start_time = millis();
 	while ((millis() - wifi_config_start_time) < WIFI_CONFIG_TIMEOUT + 500) {
 		dnsServer.processNextRequest();
-		server.handleClient();
+		server_wifi.handleClient();
 		yield();
 	}
 
@@ -289,23 +322,26 @@ void setup() {
   
   if(Ethernet.hardwareStatus() == EthernetNoHardware){
 	  Serial.println("No Ethernet found. Stay here forever");
-	  while(true){
-		  delay(1); // do nothing, no point running without Ethernet hardware
-		}
+	  ui.is_ethernet_enabled = false;
   }
   
   if (Ethernet.linkStatus() == LinkOFF) {
 	  Serial.println("Not connected Ethernet cable");
+	  ui.is_ethernet_enabled = false;
+  }
+  else{
+	  Serial.print(F("Using mac index = "));
+	  Serial.println(index);
+	  Serial.print(F("Connected! IP address: "));
+	  Serial.println(Ethernet.localIP());
   }
   
-  Serial.print(F("Using mac index = "));
-  Serial.println(index);
-
-  Serial.print(F("Connected! IP address: "));
-  Serial.println(Ethernet.localIP());
+  if(!ui.is_ethernet_enabled){
+	  connectWifi();	  
+  }
   
-  //connectWifi();
-  //setup_webserver();
+  setup_webserver();
+ 
 
   /* Setup mDNS */
   if(!MDNS.begin("esp32")) {
@@ -323,6 +359,13 @@ void setup() {
 
 void loop() {
   ws2812fx.service();
-  server.handleClient();
+
+  if(ui.is_ethernet_enabled){
+	  server_eth.handleClient();
+  }
+  else{
+	  server_wifi.handleClient();
+  }
+  
   yield(); 
 }
