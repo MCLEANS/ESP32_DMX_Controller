@@ -11,24 +11,20 @@ void UI::start_html_page(EthernetWebServer& server_e, WebServer& server_w, Strin
 	if(this->is_ethernet_enabled){
 		server_e.setContentLength(CONTENT_LENGTH_UNKNOWN);
 		server_e.send(200, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), s);
-		server_e.sendContent_P(WEB_PAGE_HEADER_HEAD);
+		server_e.sendContent_P(WEB_PAGE_HEADER);
+		server_e.sendContent_P(CSS);
+		server_e.sendContent_P(WEB_PAGE_START_BODY);
+		server_e.sendContent_P(WEB_PAGE_NAV);
 	}
 	else{
 		server_w.setContentLength(CONTENT_LENGTH_UNKNOWN);
 		server_w.send(200, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), s);
-		server_w.sendContent_P(WEB_PAGE_HEADER_HEAD);
+		server_w.sendContent_P(WEB_PAGE_HEADER);
+		server_w.sendContent_P(CSS);
+		server_w.sendContent_P(WEB_PAGE_START_BODY);
+		server_w.sendContent_P(WEB_PAGE_NAV);
 	}	
-
-	s = FPSTR(WEB_PAGE_HEADER_BODY);
 	s.replace("{t}", title);
-	if (title != " ") {
-		s.replace("{n}", F("&raquo;"));
-	} else {
-		s.replace("{n}", emptyString);
-	}
-	s.replace("{id}", esp_chipid);
-	s.replace("{mac}", address);
-
 	page_content += s;
 }
 
@@ -51,8 +47,7 @@ void UI::end_html_page(EthernetWebServer& server_e, WebServer& server_w, String&
 		}
 		else{
 			server_w.sendContent(page_content);
-		}
-		
+		}		
 	}
 	if(this->is_ethernet_enabled) server_e.sendContent_P(WEB_PAGE_FOOTER);
 	else server_w.sendContent_P(WEB_PAGE_FOOTER);

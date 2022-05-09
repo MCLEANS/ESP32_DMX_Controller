@@ -246,7 +246,7 @@ static void waitForWifiToConnect(int maxRetries) {
 	int retryCount = 0;
 	while ((WiFi.status() != WL_CONNECTED) && (retryCount < maxRetries)) {
 		delay(500);
-    Serial.print(".");
+    	Serial.print(".");
 		++retryCount;
 	}
 }
