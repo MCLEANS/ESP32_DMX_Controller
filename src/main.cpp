@@ -151,13 +151,39 @@ static void handle_speed_update(){
 		server_eth.send(302, "text/html", emptyString);
 	}
 	else{
-		Serial.println(server_wifi.arg("Speed"));
+		Serial.println(server_wifi.arg("speed"));
 		ws2812_config.speed = map((String(server_wifi.arg("speed"))).toInt(),0,100,MAX_LED_SPEED,0);
 		server_wifi.send(302, "text/html", emptyString);
 	}
     
     /* Configure ws2812 leds */
     ws2812fx.setSpeed(ws2812_config.speed);
+    /* Start leds */
+    ws2812fx.start();
+    /* Save updated configuration to config file */
+    config_file.save(ws2812_config, wifi_credentials); 
+  }
+  else{
+    Serial.println("Unknown Parameter");
+  }
+}
+
+static void handle_pattern_update(){
+  if (server_wifi.hasArg("pattern") || server_eth.hasArg("pattern")) {
+    Serial.print("Patern Updated to : ");
+	if(ui.is_ethernet_enabled){
+		Serial.println(server_eth.arg("pattern"));
+		ws2812_config.mode = (String(server_eth.arg("pattern"))).toInt();
+		server_eth.send(302, "text/html", emptyString);
+	}
+	else{
+		Serial.println(server_wifi.arg("pattern"));
+		ws2812_config.mode = (String(server_wifi.arg("pattern"))).toInt();
+		server_wifi.send(302, "text/html", emptyString);
+	}
+    
+    /* Configure ws2812 leds */
+    ws2812fx.configure(ws2812_config);
     /* Start leds */
     ws2812fx.start();
     /* Save updated configuration to config file */
@@ -205,6 +231,7 @@ static void setup_webserver() {
 		server_eth.on("/color_picker", handle_color_picker);
 		server_eth.on("/update_brightness", handle_brightness_update);
 		server_eth.on("/update_speed", handle_speed_update);
+		server_eth.on("/update_pattern", handle_pattern_update);
 
 		server_eth.onNotFound([]() {                              // If the client requests any URI
 			if (!handleFileRead(server_eth.uri())) {  // send it if it exists
@@ -217,6 +244,7 @@ static void setup_webserver() {
 		server_wifi.on("/color_picker", handle_color_picker);
 		server_wifi.on("/update_brightness", handle_brightness_update);
 		server_wifi.on("/update_speed", handle_speed_update);
+		server_wifi.on("/update_pattern", handle_pattern_update);
 
 		server_wifi.onNotFound([]() {                              // If the client requests any URI
 			if (!handleFileRead(server_wifi.uri())) {  // send it if it exists
