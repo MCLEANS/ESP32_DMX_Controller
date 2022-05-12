@@ -15,9 +15,9 @@ void File_handler::init(){
 }
 
 bool File_handler::save(WS2812_config &ws2812_config, WIFI_credentials &credentials){
-    Serial.println("Saving configuration file ..");
+    Serial.print("Saving configuration file  : ");
 
-    StaticJsonDocument<200> doc;
+    StaticJsonDocument<500> doc;
     doc["wifi_credentials"]["ssid"] = credentials.wifi_ssid;
     doc["wifi_credentials"]["password"] = credentials.wifi_password;
     doc["ws2812"]["segment_index"] = ws2812_config.segment_index;
@@ -35,6 +35,8 @@ bool File_handler::save(WS2812_config &ws2812_config, WIFI_credentials &credenti
         return false;
     }
     serializeJson(doc, configFile);
+    serializeJson(doc, Serial);
+    Serial.println("");
     return true;
 }
 
@@ -61,7 +63,7 @@ bool File_handler::load(WS2812_config &ws2812_config, WIFI_credentials &credenti
     // use configFile.readString instead.
     configFile.readBytes(buf.get(), size);
 
-    StaticJsonDocument<200> doc;
+    StaticJsonDocument<500> doc;
     auto error = deserializeJson(doc, buf.get());
     if (error) {
         Serial.println("Failed to parse config file");

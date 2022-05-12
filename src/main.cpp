@@ -17,7 +17,6 @@
 
 #include "defines.h"
 #include "file_handler.h"
-#include "html_content.h"
 #include "UI.h"
 #include "ws2812.h"
 
@@ -70,60 +69,25 @@ DNSServer dnsServer;
 WS2812 ws2812fx(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 WS2812_config ws2812_config = {
-  0,
-  0,
-  LED_COUNT - 1,
-  FX_MODE_BICOLOR_CHASE,
-  BLUE,
-  4000,
-  false,
-  255,
+  .segment_index =  0,
+  .start_index = 0,
+  .stop_index =  LED_COUNT - 1,
+  .mode =  FX_MODE_BICOLOR_CHASE,
+  .color =  BLUE,
+  .speed = 4000,
+  .reverse = false,
+  .brightness =  255
 };
 
 static void sendHttpRedirect() {
 	if(ui.is_ethernet_enabled){
 		server_eth.sendHeader(F("Location"), F("http://192.168.4.1/"));
-		server_eth.send(302, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), emptyString);
+		server_eth.send(302, "text/html", emptyString);
 	}
 	else{
 		server_wifi.sendHeader(F("Location"), F("http://192.168.4.1/"));
-		server_wifi.send(302, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), emptyString);
-	}
-	
-}
-
-/*****************************************************************
- * Webserver root: show all options                              *
- *****************************************************************/
-static void webserver_control() {
-  RESERVE_STRING(page_content, XLARGE_STR);
-  ui.start_html_page(server_eth,server_wifi, page_content, emptyString, esp_chipid, WiFi.macAddress());	
-
-  if(ui.is_ethernet_enabled)server_eth.sendContent(page_content);
-  else server_wifi.sendContent(page_content);
-
-  page_content = emptyString;
-
-  ui.set_color_picker(page_content, ws2812_config);
-
-  if(ui.is_ethernet_enabled)server_eth.sendContent(page_content);
-  else server_wifi.sendContent(page_content);
-
-  page_content = emptyString;
-
-  ui.end_html_page(server_eth,server_wifi,page_content);
-}
-
-static void webserver_not_found() {
-	if (WiFi.status() != WL_CONNECTED) {
-		if ((server_wifi.uri().indexOf(F("success.html")) != -1) || (server_wifi.uri().indexOf(F("detect.html")) != -1)) {
-			server_wifi.send(200, FPSTR(TXT_CONTENT_TYPE_TEXT_HTML), FPSTR(WEB_IOS_REDIRECT));
-		} else {
-			sendHttpRedirect();
-		}
-	} else {
-		server_wifi.send(404, FPSTR(TXT_CONTENT_TYPE_TEXT_PLAIN), F("Not found."));
-	}
+		server_wifi.send(302, "text/html", emptyString);
+	}	
 }
 
 static void handle_color_picker(){
@@ -132,14 +96,16 @@ static void handle_color_picker(){
 	if(ui.is_ethernet_enabled){
 		Serial.println(server_eth.arg("color"));
 		ws2812_config.color = (uint32_t)strtol(server_eth.arg("color").c_str(), NULL, 16);
+		server_eth.send(302, "text/html", emptyString);
 	}
 	else{
 		Serial.println(server_wifi.arg("color"));
 		ws2812_config.color = (uint32_t)strtol(server_wifi.arg("color").c_str(), NULL, 16);
+		server_wifi.send(302, "text/html", emptyString);
 	}
     
     /* Configure ws2812 leds */
-    ws2812fx.configure(ws2812_config);
+    ws2812fx.setColor(ws2812_config.color);
     /* Start leds */
     ws2812fx.start();
     /* Save updated configuration to config file */
@@ -150,20 +116,115 @@ static void handle_color_picker(){
   }
 }
 
+static void handle_brightness_update(){
+  if (server_wifi.hasArg("brightness") || server_eth.hasArg("brightness")) {
+    Serial.print("Brightness Updated to : ");
+	if(ui.is_ethernet_enabled){
+		Serial.println(server_eth.arg("brightness"));
+		ws2812_config.brightness = (String(server_eth.arg("brightness"))).toInt();
+		server_eth.send(302, "text/html", emptyString);
+	}
+	else{
+		Serial.println(server_wifi.arg("brightness"));
+		ws2812_config.brightness = (String(server_wifi.arg("brightness"))).toInt();
+		server_wifi.send(302, "text/html", emptyString);
+	}
+    
+    /* Configure ws2812 leds */
+    ws2812fx.setBrightness(ws2812_config.brightness);
+    /* Start leds */
+    ws2812fx.start();
+    /* Save updated configuration to config file */
+    config_file.save(ws2812_config, wifi_credentials); 
+  }
+  else{
+    Serial.println("Unknown Parameter");
+  }
+}
+
+static void handle_speed_update(){
+  if (server_wifi.hasArg("speed") || server_eth.hasArg("speed")) {
+    Serial.print("Speed Updated to : ");
+	if(ui.is_ethernet_enabled){
+		Serial.println(server_eth.arg("speed"));
+		ws2812_config.speed = map((String(server_eth.arg("speed"))).toInt(),0,100,MAX_LED_SPEED,0);
+		server_eth.send(302, "text/html", emptyString);
+	}
+	else{
+		Serial.println(server_wifi.arg("Speed"));
+		ws2812_config.speed = map((String(server_wifi.arg("speed"))).toInt(),0,100,MAX_LED_SPEED,0);
+		server_wifi.send(302, "text/html", emptyString);
+	}
+    
+    /* Configure ws2812 leds */
+    ws2812fx.setSpeed(ws2812_config.speed);
+    /* Start leds */
+    ws2812fx.start();
+    /* Save updated configuration to config file */
+    config_file.save(ws2812_config, wifi_credentials); 
+  }
+  else{
+    Serial.println("Unknown Parameter");
+  }
+}
+
+String getContentType(String filename) { // convert the file extension to the MIME type
+  if(filename.endsWith(".html")) return "text/html";
+  else if(filename.endsWith(".css")) return "text/css";
+  else if(filename.endsWith(".js")) return "application/javascript";
+  else if(filename.endsWith(".ico")) return "image/x-icon";
+  else if(filename.endsWith(".gz")) return "application/x-gzip";
+  return "text/plain";
+}
+
+bool handleFileRead(String path){  // send the right file to the client (if it exists)
+  Serial.println("handleFileRead: " + path);
+  if(path.endsWith("/")) path += "config.html";           // If a folder is requested, send the index file
+  String contentType = getContentType(path);             // Get the MIME type
+  String pathWithGz = path + ".gz";
+  if(SPIFFS.exists(pathWithGz) || SPIFFS.exists(path)){  // If the file exists, either as a compressed archive, or normal
+    if(SPIFFS.exists(pathWithGz))                          // If there's a compressed version available
+      path += ".gz";                                         // Use the compressed version
+    File file = SPIFFS.open(path, "r");                    // Open the file
+	if(ui.is_ethernet_enabled){
+		size_t sent = server_eth.streamFile(file, contentType);    // Send it to the client
+	}
+	else{
+		size_t sent = server_wifi.streamFile(file, contentType);    // Send it to the client
+	}  
+    file.close();                                          // Close the file again
+    Serial.println(String("\tSent file: ") + path);
+    return true;
+  }
+  Serial.println(String("\tFile Not Found: ") + path);
+  return false;                                          // If the file doesn't exist, return false
+}
+
 static void setup_webserver() {
 	if(ui.is_ethernet_enabled){
-		server_eth.on("/", webserver_control);
 		server_eth.on("/color_picker", handle_color_picker);
-		server_eth.onNotFound(webserver_not_found);
+		server_eth.on("/update_brightness", handle_brightness_update);
+		server_eth.on("/update_speed", handle_speed_update);
+
+		server_eth.onNotFound([]() {                              // If the client requests any URI
+			if (!handleFileRead(server_eth.uri())) {  // send it if it exists
+				server_eth.send(404, "text/plain", "404: Not Found"); // otherwise, respond with a 404 (Not Found) error
+			}                 
+		});
 		server_eth.begin();
 	}
 	else{
-		server_wifi.on("/", webserver_control);
 		server_wifi.on("/color_picker", handle_color_picker);
-		server_wifi.onNotFound(webserver_not_found);
+		server_wifi.on("/update_brightness", handle_brightness_update);
+		server_wifi.on("/update_speed", handle_speed_update);
+
+		server_wifi.onNotFound([]() {                              // If the client requests any URI
+			if (!handleFileRead(server_wifi.uri())) {  // send it if it exists
+				server_wifi.send(404, "text/plain", "404: Not Found"); // otherwise, respond with a 404 (Not Found) error
+			}                 
+		});
 		server_wifi.begin();
-	}
-	
+	}	
 }
 
 static int selectChannelForAp() {
@@ -189,7 +250,7 @@ static int selectChannelForAp() {
  * WifiConfig                                                    *
  *****************************************************************/
 static void wifiConfig() {
-	Serial.println("Starting WiFi Access Point");
+Serial.println("Starting WiFi Access Point");
   Serial.print("AP ID: ");
   Serial.println(AP_ssid);
   Serial.print("Password: ");
@@ -287,17 +348,10 @@ static void connectWifi() {
 
   Serial.print("WiFi connected, IP is: ");
   Serial.println(WiFi.localIP().toString());
-  //last_signal_strength = WiFi.RSSI();
-
-  if (MDNS.begin(AP_ssid)) {
-	MDNS.addService("http", "tcp", 80);
-	MDNS.addServiceTxt("http", "tcp", "PATH", "/");
-	}
 }
 
 void setup() {
   Serial.begin(115200);
-
   /* Initialize config file */
   config_file.init();
 
@@ -315,7 +369,7 @@ void setup() {
   WiFi.persistent(false);
   
   Ethernet.init(USE_THIS_SS_PIN); 
-  uint16_t index = millis() % NUMBER_OF_MAC;
+  uint16_t index = 0; //millis() % NUMBER_OF_MAC;
   // Use Static IP
   //Ethernet.begin(mac[index], ip);
   Ethernet.begin(mac[index]);
@@ -342,7 +396,6 @@ void setup() {
   
   setup_webserver();
  
-
   /* Setup mDNS */
   if(!MDNS.begin("esp32")) {
      Serial.println("Error starting mDNS");
@@ -366,6 +419,6 @@ void loop() {
   else{
 	  server_wifi.handleClient();
   }
-  
+
   yield(); 
 }
