@@ -2,7 +2,6 @@
 #define _UI_H_
 
 #include <Arduino.h>
-#include <html_content.h>
 #include <WebServer.h>
 #include <EthernetWebServer.hpp>
 
@@ -26,9 +25,7 @@ class UI{
         bool is_ethernet_enabled = true;
     public:
         UI();
-        void start_html_page(EthernetWebServer& server_e, WebServer& server_w, String& page_content, const String& title, const String& esp_chipid, String address);
-        void set_color_picker(String& page_content, WS2812_config &ws2812_config);
-        void end_html_page(EthernetWebServer& server_e, WebServer& server_w, String& page_content);
+
         ~UI();
 };
 
