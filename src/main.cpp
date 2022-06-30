@@ -194,6 +194,55 @@ static void handle_pattern_update(){
   }
 }
 
+static void handle_configuration_update(){
+  if (server_wifi.hasArg("ssid") || server_eth.hasArg("ssid")) {
+    Serial.print("SSID Updated to : ");
+	if(ui.is_ethernet_enabled){
+		if(!String(server_eth.arg("ssid")).isEmpty()){
+			Serial.println(server_eth.arg("ssid"));
+			strncpy(wifi_credentials.wifi_ssid,String(server_eth.arg("ssid")).c_str(),sizeof(String(server_eth.arg("ssid")).c_str()));
+			server_eth.send(302, "text/html", emptyString);
+		}	
+	}
+	else{
+		if(!String(server_wifi.arg("ssid")).isEmpty()){
+			Serial.println(server_wifi.arg("ssid"));
+			strncpy(wifi_credentials.wifi_ssid,String(server_wifi.arg("ssid")).c_str(),sizeof(String(server_wifi.arg("ssid")).c_str()));
+			server_wifi.send(302, "text/html", emptyString);
+		}
+	}   
+    /* Save updated configuration to config file */
+    config_file.save(ws2812_config, wifi_credentials); 
+  }
+
+  if (server_wifi.hasArg("pwd") || server_eth.hasArg("pwd")) {
+    Serial.print("PWD Updated to : ");
+	if(ui.is_ethernet_enabled){
+		if(!String(server_eth.arg("pwd")).isEmpty()){
+			Serial.println(server_eth.arg("pwd"));
+			strncpy(wifi_credentials.wifi_password,String(server_eth.arg("pwd")).c_str(),sizeof(String(server_eth.arg("pwd")).c_str()));
+			server_eth.send(302, "text/html", emptyString);
+		}
+	}
+	else{
+		if(!String(server_wifi.arg("pwd")).isEmpty()){
+			Serial.println(server_wifi.arg("pwd"));
+			strncpy(wifi_credentials.wifi_password,String(server_wifi.arg("pwd")).c_str(),sizeof(String(server_wifi.arg("pwd")).c_str()));
+			server_wifi.send(302, "text/html", emptyString);
+		}
+		
+	}   
+    /* Save updated configuration to config file */
+    config_file.save(ws2812_config, wifi_credentials); 
+  }
+  else{
+    Serial.println("Unknown Parameter");
+  }
+
+	/* Restart ESP to connect to new WiFi network */
+  	ESP.restart();
+}
+
 String getContentType(String filename) { // convert the file extension to the MIME type
   if(filename.endsWith(".html")) return "text/html";
   else if(filename.endsWith(".css")) return "text/css";
@@ -232,6 +281,7 @@ static void setup_webserver() {
 		server_eth.on("/update_brightness", handle_brightness_update);
 		server_eth.on("/update_speed", handle_speed_update);
 		server_eth.on("/update_pattern", handle_pattern_update);
+		server_eth.on("/configuration", handle_configuration_update);
 
 		server_eth.onNotFound([]() {                              // If the client requests any URI
 			if (!handleFileRead(server_eth.uri())) {  // send it if it exists
@@ -245,6 +295,7 @@ static void setup_webserver() {
 		server_wifi.on("/update_brightness", handle_brightness_update);
 		server_wifi.on("/update_speed", handle_speed_update);
 		server_wifi.on("/update_pattern", handle_pattern_update);
+		server_wifi.on("/configuration", handle_configuration_update);
 
 		server_wifi.onNotFound([]() {                              // If the client requests any URI
 			if (!handleFileRead(server_wifi.uri())) {  // send it if it exists

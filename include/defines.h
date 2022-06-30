@@ -20,10 +20,10 @@ struct WIFI_credentials{
 const char AP_ssid[] = "ESP32_DMX";  // Enter SSID here
 const char AP_password[] = "";  //Enter Password here
 
-const char STA_SSID[] = "geviton_wireless";  // Enter SSID here
+const char STA_SSID[] = "geviton_2";  // Enter SSID here
 const char STA_PASSWORD[] = "1234ninye#";  //Enter Password here
 
-#define LED_COUNT 15
+#define LED_COUNT 256
 #define LED_PIN 16
 
 #define MAX_LED_SPEED 12000
